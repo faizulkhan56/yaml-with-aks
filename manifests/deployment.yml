@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: yamlaks 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yamlaks
+  template:
+    metadata:
+      labels:
+        app: yamlaks 
+    spec:
+      containers:
+        - name: yamlaks 
+          image: azuredevopscourse.azurecr.io/yamlaks
+          ports:
+          - containerPort: 80

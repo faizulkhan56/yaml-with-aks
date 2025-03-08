@@ -12,9 +12,12 @@ variables:
   dockerfilePath: '**/Dockerfile'
   tag: '$(Build.BuildId)'
   imagePullSecret: 'azuredevopscourse1744a431-auth'
-  
+
   # Self-hosted agent pool
   agentPoolName: 'Default'
+
+  # Static Environment Name (Fix for Environment Issue)
+  azureDevOpsEnvironment: 'faizulkhan56yamlwithaks-1567.default'
 
   # Name of the new namespace being created for PR changes
   k8sNamespaceForPR: 'review-app-$(System.PullRequest.PullRequestId)'
@@ -46,7 +49,7 @@ stages:
         ArtifactName: 'manifests'
         publishLocation: 'Container'
 
-# 🔹 Deploy Stage
+# 🔹 Deploy Stage (Fix for Environment Name)
 - stage: Deploy
   displayName: Deploy stage
   dependsOn: Build
@@ -57,7 +60,7 @@ stages:
     displayName: Deploy to AKS
     pool:
       name: $(agentPoolName)  # Use Self-Hosted Pool
-    environment: 'faizulkhan56yamlwithaks-1567.default'
+    environment: $(azureDevOpsEnvironment)  # Static Environment Name
     strategy:
       runOnce:
         deploy:
@@ -81,7 +84,7 @@ stages:
               containers: |
                 $(containerRegistry)/$(imageRepository):$(tag)
 
-# 🔹 Deploy Pull Request Stage (Review App)
+# 🔹 Deploy Pull Request Stage (Review App Fix)
 - stage: DeployPullRequest
   displayName: Deploy Pull Request
   dependsOn: Build
@@ -91,8 +94,8 @@ stages:
   - deployment: DeployPR
     displayName: Deploy PR Namespace
     pool:
-      name: $(agentPoolName)  # Use Self-Hosted Pool
-    environment: 'faizulkhan56yamlwithaks-1567.$(k8sNamespaceForPR)'
+      name: $(agentPoolName)  # Self-Hosted Pool
+    environment: $(azureDevOpsEnvironment)  # Static Environment Name
     strategy:
       runOnce:
         deploy:
@@ -102,21 +105,22 @@ stages:
             inputs:
               command: apply
               useConfigurationFile: true
-              inline: '{ "kind": "Namespace", "apiVersion": "v1", "metadata": { "name": "$(k8sNamespaceForPR)" }}'
+              inline: |
+                { "kind": "Namespace", "apiVersion": "v1", "metadata": { "name": "$(k8sNamespaceForPR)" } }
 
           - task: KubernetesManifest@0
             displayName: Create imagePullSecret
             inputs:
               action: createSecret
               secretName: $(imagePullSecret)
-              namespace: $(k8sNamespaceForPR)
+              namespace: $(k8sNamespaceForPR)  # Pass dynamic namespace here
               dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
 
           - task: KubernetesManifest@0
             displayName: Deploy PR to Kubernetes
             inputs:
               action: deploy
-              namespace: $(k8sNamespaceForPR)
+              namespace: $(k8sNamespaceForPR)  # Pass dynamic namespace here
               manifests: |
                 $(Pipeline.Workspace)/manifests/deployment.yml
                 $(Pipeline.Workspace)/manifests/service.yml
